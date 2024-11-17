@@ -58,10 +58,24 @@
 
 /* USER CODE BEGIN PV */
 #define INIT 0
-#define DRAW 1
-#define CLEAR 2
+#define PLAYING 1
+#define GAME_OVER 2
 
-int draw_Status = INIT;
+int play_Status = INIT;
+
+// Kích thước lưới và màn hình
+#define GRID_SIZE 20
+#define SCREEN_WIDTH 240
+#define SCREEN_HEIGHT 320
+
+typedef struct {
+    int x, y;
+} Point;
+
+Point snake[100];  // Tối đa 100 phần tử
+int snakeLength = 3;
+Point food;
+int direction = 0;  // 0: Up, 1: Down, 2: Left, 3: Right
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -70,7 +84,11 @@ void SystemClock_Config(void);
 void system_init();
 void test_LedDebug();
 void touchProcess();
-uint8_t isButtonClear();
+uint8_t isButtonUp();
+uint8_t isButtonDown();
+uint8_t isButtonLeft();
+uint8_t isButtonRight();
+uint8_t isButtonStart();
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -127,7 +145,7 @@ int main(void)
 	  //scan touch screen
 	  touch_Scan();
 	  //check if touch screen is touched
-	  if(touch_IsTouched() && draw_Status == DRAW){
+	  if(touch_IsTouched() && play_Status == DRAW){
             //draw a point at the touch position
 		  lcd_DrawPoint(touch_GetX(), touch_GetY(), RED);
 	  }
@@ -207,36 +225,183 @@ void test_LedDebug(){
 	}
 }
 
-uint8_t isButtonClear(){
+uint8_t isButtonUp(){
 	if(!touch_IsTouched()) return 0;
-	return touch_GetX() > 60 && touch_GetX() < 180 && touch_GetY() > 10 && touch_GetY() < 60;
+	return touch_GetX() > 90 && touch_GetX() < 130 && touch_GetY() > 10 && touch_GetY() < 60;
 }
 
-void touchProcess(){
-	switch (draw_Status) {
-		case INIT:
-                // display blue button
-			lcd_Fill(60, 10, 180, 60, GBLUE);
-			lcd_ShowStr(90, 20, "CLEAR", RED, BLACK, 24, 1);
-			draw_Status = DRAW;
-			break;
-		case DRAW:
-			if(isButtonClear()){
-				draw_Status = CLEAR;
-                    // clear board
-				lcd_Fill(0, 60, 240, 320, BLACK);
-                    // display green button
-				lcd_Fill(60, 10, 180, 60, GREEN);
-				lcd_ShowStr(90, 20, "CLEAR", RED, BLACK, 24, 1);
-			}
-			break;
-		case CLEAR:
-			if(!touch_IsTouched()) draw_Status = INIT;
-			break;
-		default:
-			break;
-	}
+uint8_t isButtonDown(){
+	if(!touch_IsTouched()) return 0;
+	return touch_GetX() > 90 && touch_GetX() < 130 && touch_GetY() > 260 && touch_GetY() < 310;
 }
+
+uint8_t isButtonLeft(){
+	if(!touch_IsTouched()) return 0;
+	return touch_GetX() > 10 && touch_GetX() < 50 && touch_GetY() > 140 && touch_GetY() < 180;
+}
+
+uint8_t isButtonRight(){
+	if(!touch_IsTouched()) return 0;
+	return touch_GetX() > 190 && touch_GetX() < 230 && touch_GetY() > 140 && touch_GetY() < 180;
+}
+
+uint8_t isButtonStart(){
+	if(!touch_IsTouched()) return 0;
+	return touch_GetX() > 60 && touch_GetX() < 180 && touch_GetY() > 140 && touch_GetY() < 190;
+}
+
+void initGame() {
+    // Khởi tạo rắn
+    snakeLength = 3;
+    snake[0].x = 5; snake[0].y = 5;
+    snake[1].x = 5; snake[1].y = 6;
+    snake[2].x = 5; snake[2].y = 7;
+    direction = 0;
+
+    // Khởi tạo thức ăn
+    generateFood();
+}
+
+void generateFood() {
+    food.x = rand() % (SCREEN_WIDTH / GRID_SIZE);
+    food.y = rand() % (SCREEN_HEIGHT / GRID_SIZE);
+}
+
+void drawSnake() {
+    for (int i = 0; i < snakeLength; i++) {
+        lcd_Fill(snake[i].x * GRID_SIZE, snake[i].y * GRID_SIZE,
+                 (snake[i].x + 1) * GRID_SIZE, (snake[i].y + 1) * GRID_SIZE, GREEN);
+    }
+}
+
+void drawFood() {
+    lcd_Fill(food.x * GRID_SIZE, food.y * GRID_SIZE,
+             (food.x + 1) * GRID_SIZE, (food.y + 1) * GRID_SIZE, RED);
+}
+
+int checkCollision() {
+    // Va chạm với tường
+    if (snake[0].x < 0 || snake[0].x >= SCREEN_WIDTH / GRID_SIZE ||
+        snake[0].y < 0 || snake[0].y >= SCREEN_HEIGHT / GRID_SIZE) {
+        return 1;
+    }
+
+    // Va chạm chính nó
+    for (int i = 1; i < snakeLength; i++) {
+        if (snake[0].x == snake[i].x && snake[0].y == snake[i].y) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+void checkFood() {
+    if (snake[0].x == food.x && snake[0].y == food.y) {
+        snakeLength++;
+        generateFood();
+    }
+}
+
+void moveSnake() {
+    // Di chuyển thân rắn
+    for (int i = snakeLength - 1; i > 0; i--) {
+        snake[i] = snake[i - 1];
+    }
+
+    // Di chuyển đầu rắn
+    if (direction == 0) snake[0].y--;        // Lên
+    else if (direction == 1) snake[0].y++;   // Xuống
+    else if (direction == 2) snake[0].x--;   // Trái
+    else if (direction == 3) snake[0].x++;   // Phải
+}
+
+void touchProcess() {
+    switch (play_Status) {
+        case INIT:
+            lcd_Fill(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, BLACK);
+            lcd_Fill(60, 140, 180, 190, GBLUE);
+            lcd_ShowStr(90, 150, "START", WHITE, BLACK, 24, 1);
+            if (isButtonStart()) {
+                play_Status = PLAYING;
+                initGame();
+            }
+            break;
+
+        case PLAYING:
+            lcd_Fill(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, BLACK);
+            moveSnake();
+            if (checkCollision()) {
+                play_Status = GAME_OVER;
+            } else {
+                checkFood();
+                drawSnake();
+                drawFood();
+            }
+            break;
+
+        case GAME_OVER:
+            lcd_Fill(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, BLACK);
+            lcd_Fill(60, 140, 180, 190, GBLUE);
+            lcd_ShowStr(90, 150, "GAME OVER", RED, BLACK, 24, 1);
+            if (isButtonStart()) {
+                play_Status = INIT;
+            }
+            break;
+
+        default:
+            break;
+    }
+}
+
+void handleDirection() {
+    if (touch_IsTouched()) {
+        int x = touch_GetX();
+        int y = touch_GetY();
+
+        if (x > 90 && x < 130 && y > 10 && y < 60) direction = 0;  // Lên
+        else if (x > 90 && x < 130 && y > 260 && y < 310) direction = 1;  // Xuống
+        else if (x > 10 && x < 50 && y > 140 && y < 180) direction = 2;  // Trái
+        else if (x > 190 && x < 230 && y > 140 && y < 180) direction = 3;  // Phải
+    }
+}
+
+//void touchProcess(){
+//	switch (play_Status) {
+//		case INIT:
+//			//Clear screen
+//			lcd_Fill(0, 60, 240, 320, BLACK);
+//			lcd_Fill(60, 140, 180, 190, GBLUE);
+//			lcd_ShowStr(90, 20, "START", RED, BLACK, 24, 1);
+//			if (isButtonStart()){
+//				play_Status = PLAYING;
+//			}
+//			break;
+//		case PLAYING:
+//			//Clear screen
+//			lcd_Fill(0, 60, 240, 320, BLACK);
+//
+//			lcd_Fill(90, 10, 130, 60, GREEN);
+//			lcd_ShowStr(110, 20, "U", RED, BLACK, 24, 1);
+//			lcd_Fill(90, 260, 130, 310, GREEN);
+//			lcd_ShowStr(110, 270, "D", RED, BLACK, 24, 1);
+//			lcd_Fill(10, 140, 50, 180, GREEN);
+//			lcd_ShowStr(20, 160, "L", RED, BLACK, 24, 1);
+//			lcd_Fill(190, 140, 230, 180, GREEN);
+//			lcd_ShowStr(200, 160, "R", RED, BLACK, 24, 1);
+//			if (isButtonStart()){
+//				play_Status = CLEAR;
+//			}
+//			break;
+//		case RETURN:
+//			if(!touch_IsTouched()) play_Status = INIT;
+//			//Clear screen
+//			lcd_Fill(0, 60, 240, 320, BLACK);
+//			break;
+//		default:
+//			break;
+//	}
+//}
 /* USER CODE END 4 */
 
 /**
