@@ -84,10 +84,14 @@ void SystemClock_Config(void);
 void system_init();
 void test_LedDebug();
 void touchProcess();
-uint8_t isButtonUp();
-uint8_t isButtonDown();
-uint8_t isButtonLeft();
-uint8_t isButtonRight();
+void initGame();
+void generateFood();
+void drawSnake();
+void drawFood();
+int checkCollision();
+void checkFood();
+void moveSnake();
+void handleDirection();
 uint8_t isButtonStart();
 /* USER CODE END PFP */
 
@@ -144,11 +148,6 @@ int main(void)
   {
 	  //scan touch screen
 	  touch_Scan();
-	  //check if touch screen is touched
-	  if(touch_IsTouched() && play_Status == DRAW){
-            //draw a point at the touch position
-		  lcd_DrawPoint(touch_GetX(), touch_GetY(), RED);
-	  }
 	  // 50ms task
 	  if(flag_timer2 == 1){
 		  flag_timer2 = 0;
@@ -223,26 +222,6 @@ void test_LedDebug(){
 	if(count_led_debug == 0){
 		HAL_GPIO_TogglePin(DEBUG_LED_GPIO_Port, DEBUG_LED_Pin);
 	}
-}
-
-uint8_t isButtonUp(){
-	if(!touch_IsTouched()) return 0;
-	return touch_GetX() > 90 && touch_GetX() < 130 && touch_GetY() > 10 && touch_GetY() < 60;
-}
-
-uint8_t isButtonDown(){
-	if(!touch_IsTouched()) return 0;
-	return touch_GetX() > 90 && touch_GetX() < 130 && touch_GetY() > 260 && touch_GetY() < 310;
-}
-
-uint8_t isButtonLeft(){
-	if(!touch_IsTouched()) return 0;
-	return touch_GetX() > 10 && touch_GetX() < 50 && touch_GetY() > 140 && touch_GetY() < 180;
-}
-
-uint8_t isButtonRight(){
-	if(!touch_IsTouched()) return 0;
-	return touch_GetX() > 190 && touch_GetX() < 230 && touch_GetY() > 140 && touch_GetY() < 180;
 }
 
 uint8_t isButtonStart(){
@@ -330,6 +309,10 @@ void touchProcess() {
 
         case PLAYING:
             lcd_Fill(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, BLACK);
+			lcd_ShowStr(110, 20, "U", RED, BLACK, 24, 1);
+			lcd_ShowStr(110, 270, "D", RED, BLACK, 24, 1);
+			lcd_ShowStr(20, 160, "L", RED, BLACK, 24, 1);
+			lcd_ShowStr(200, 160, "R", RED, BLACK, 24, 1);
             moveSnake();
             if (checkCollision()) {
                 play_Status = GAME_OVER;
