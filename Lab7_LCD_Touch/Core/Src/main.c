@@ -62,7 +62,7 @@
 #define GAME_OVER 2
 
 int play_Status = INIT;
-
+int counter = 0;
 // Kích thước lưới và màn hình
 #define GRID_SIZE 20
 #define SCREEN_WIDTH 240
@@ -259,13 +259,13 @@ void drawFood() {
 }
 
 int checkCollision() {
-    // Va chạm với tường
+    // Va cham voi tuong
     if (snake[0].x < 0 || snake[0].x >= SCREEN_WIDTH / GRID_SIZE ||
         snake[0].y < 0 || snake[0].y >= SCREEN_HEIGHT / GRID_SIZE) {
         return 1;
     }
 
-    // Va chạm chính nó
+    // Va cham chinh no
     for (int i = 1; i < snakeLength; i++) {
         if (snake[0].x == snake[i].x && snake[0].y == snake[i].y) {
             return 1;
@@ -283,12 +283,12 @@ void checkFood() {
 }
 
 void moveSnake() {
-    // Di chuyển thân rắn
+    // Di chuyen than ran
     for (int i = snakeLength - 1; i > 0; i--) {
         snake[i] = snake[i - 1];
     }
 
-    // Di chuyển đầu rắn
+    // Di chuyen dau ran
     if (direction == 0) snake[0].y--;        // Lên
     else if (direction == 1) snake[0].y++;   // Xuống
     else if (direction == 2) snake[0].x--;   // Trái
@@ -313,20 +313,25 @@ void touchProcess() {
 			lcd_ShowStr(110, 270, "D", RED, BLACK, 24, 1);
 			lcd_ShowStr(20, 160, "L", RED, BLACK, 24, 1);
 			lcd_ShowStr(200, 160, "R", RED, BLACK, 24, 1);
-            moveSnake();
-            if (checkCollision()) {
-                play_Status = GAME_OVER;
-            } else {
-                checkFood();
-                drawSnake();
-                drawFood();
-            }
+			handleDirection();
+			counter++;
+			if (counter == 10){
+				counter = 0;
+				moveSnake();
+			}
+			if (checkCollision()) {
+				play_Status = GAME_OVER;
+			} else {
+				checkFood();
+				drawSnake();
+				drawFood();
+			}
             break;
 
         case GAME_OVER:
             lcd_Fill(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, BLACK);
             lcd_Fill(60, 140, 180, 190, GBLUE);
-            lcd_ShowStr(90, 150, "GAME OVER", RED, BLACK, 24, 1);
+            lcd_ShowStr(70, 150, "GAME OVER", RED, BLACK, 24, 1);
             if (isButtonStart()) {
                 play_Status = INIT;
             }
@@ -342,10 +347,10 @@ void handleDirection() {
         int x = touch_GetX();
         int y = touch_GetY();
 
-        if (x > 90 && x < 130 && y > 10 && y < 60) direction = 0;  // Lên
-        else if (x > 90 && x < 130 && y > 260 && y < 310) direction = 1;  // Xuống
-        else if (x > 10 && x < 50 && y > 140 && y < 180) direction = 2;  // Trái
-        else if (x > 190 && x < 230 && y > 140 && y < 180) direction = 3;  // Phải
+        if (x > 70 && x < 150 && y > 0 && y < 70) direction = 0;  // Lên
+        else if (x > 70 && x < 150 && y > 250 && y < 320) direction = 1;  // Xuống
+        else if (x > 0 && x < 70 && y > 120 && y < 200) direction = 2;  // Trái
+        else if (x > 170 && x < 240 && y > 120 && y < 200) direction = 3;  // Phải
     }
 }
 
